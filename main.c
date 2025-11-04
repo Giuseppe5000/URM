@@ -16,6 +16,6 @@ int main(void) {
 
     URM *urm = urm_init(prg_text);
 
-    unsigned int input[] = {1};
-    urm_exec(urm, input, 1);
+    unsigned int input[] = {1, 10};
+    printf("RES = %u\n", urm_exec(urm, input, sizeof(input)/sizeof(input[0])));
 }

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string.h>
 
 /*==================================== Data structures ====================================*/
 
@@ -149,6 +150,7 @@ static void urm_parse_prg(URM *urm, const char *prg_text) {
 
 URM *urm_init(const char *prg_text) {
     URM *urm = urm_malloc(sizeof(URM));
+    urm->pc = 1; /* First instruction is always 1 */
     urm->memory = urm_calloc(URM_INIT_MEMORY_CAP, sizeof(unsigned int));
     urm->memory_capacity = URM_INIT_MEMORY_CAP;
 
@@ -182,21 +184,42 @@ void urm_free(URM *urm) {
 }
 
 unsigned int urm_exec(URM *urm, unsigned int *input, size_t input_len) {
-    for (size_t i = 0; i < urm->instructions_len; ++i) {
+    /* Loads the input into the machine memory */
+    memcpy(urm->memory, input, input_len*sizeof(unsigned int));
 
-        printf("Type: %d, args: ", urm->instructions[i].type);
+    /* Start execution */
+    while (urm->pc - 1 < urm->instructions_len) {
+        const URM_instr *current_instr = urm->instructions + urm->pc - 1;
+        unsigned int arg1 = current_instr->args[0];
+        unsigned int arg2 = current_instr->args[1];
+        unsigned int arg3 = current_instr->args[2];
 
-        switch (urm->instructions[i].type) {
-        case ZERO:
-        case SUCC:
-            printf("%u\n", urm->instructions[i].args[0]);
-            break;
-        case TRANSFER:
-            printf("%u %u\n", urm->instructions[i].args[0], urm->instructions[i].args[1]);
-            break;
-        case JMP:
-            printf("%u %u %u\n", urm->instructions[i].args[0], urm->instructions[i].args[1], urm->instructions[i].args[2]);
-            break;
+        switch (current_instr->type) {
+            case ZERO:
+                urm->memory[arg1 - 1] = 0;
+                urm->pc++;
+                break;
+            case SUCC:
+                urm->memory[arg1 - 1] += 1;
+                urm->pc++;
+                break;
+            case TRANSFER:
+                urm->memory[arg2 - 1] = urm->memory[arg1 - 1];
+                urm->pc++;
+                break;
+            case JMP:
+                if (urm->memory[arg1 - 1] == urm->memory[arg2 - 1]) {
+                    urm->pc = arg3;
+                } else {
+                    urm->pc++;
+                }
+                break;
+            default:
+                fprintf(stderr, "[ERROR]: Invalid instruction\n");
+                exit(1);
         }
     }
+
+    /* Execution terminate, returning the result (R1) */
+    return urm->memory[0];
 }
