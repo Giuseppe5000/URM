@@ -1,8 +1,8 @@
-#include "urm.h"
+#include "../urm.h"
 #include <stdio.h>
 
-int main(void) {
-    const char *prg_file = "program.urm";
+int main() {
+    const char *prg_file = "examples/program.urm";
 
     FILE *fp = fopen(prg_file, "r");
     fseek(fp, 0L, SEEK_END);
@@ -13,8 +13,8 @@ int main(void) {
     fread(prg_text, prg_file_len, 1, fp);
     prg_text[prg_file_len] = '\0';
     fclose(fp);
-
     URM *urm = urm_init(prg_text);
+
 
     unsigned int input[] = {1, 10};
     printf("RES = %u\n", urm_exec(urm, input, sizeof(input)/sizeof(input[0])));

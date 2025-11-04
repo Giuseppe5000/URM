@@ -1,24 +1,12 @@
 #include "urm.h"
+#include "parser.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
 
 /*==================================== Data structures ====================================*/
 
 #define URM_INIT_MEMORY_CAP 256 /* Initial allocated memory for the machine */
-
-enum URM_instr_type {
-    ZERO,      /* [1 arg] (n) - Puts 0 into the register Rn */
-    SUCC,      /* [1 arg] (n) - Increment by 1 the register Rn */
-    TRANSFER,  /* [2 args] (m,n) - Transfer content of register Rm into register Rn */
-    JMP,       /* [3 args] (m,n,k) - Jump to instruction k if Rm = Rn */
-};
-
-typedef struct {
-    enum URM_instr_type type;
-    unsigned int args[3];    /* Yep, sometimes not all used but idc */
-} URM_instr;
 
 struct URM {
     size_t pc; /* Program counter */
@@ -31,6 +19,7 @@ struct URM {
 };
 
 /*=========================================================================================*/
+
 
 /*========================================= Utils =========================================*/
 
@@ -78,94 +67,6 @@ static unsigned int max(unsigned int a, unsigned int b) {
 
 /*=========================================================================================*/
 
-/*======================================== Parsing ========================================*/
-
-/* Skip all type of spaces but \n */
-static void skip_spaces(const char **p) {
-    while (isspace(**p) && **p != '\n') {
-        (*p)++;
-    }
-}
-
-/* Parsing natural numbers */
-static void parse_uint(const char **p, unsigned int n, unsigned int *out) {
-    for (size_t i = 0; i < n; ++i) {
-        skip_spaces(p);
-
-        if (!isdigit(**p)) {
-            fprintf(stderr, "Syntax error: no args\n");
-            exit(1);
-        }
-
-        const char *num_start = *p;
-
-        /* Skipping the num */
-        while(isdigit(**p)) {
-            (*p)++;
-        }
-
-        out[i] = atoi(num_start);
-    }
-}
-
-/*
-Parse an URM program and puts the instructions (URM_instr) into the 'urm' struct.
-
-The parsing allows spaces everiwhere, the unique constraint is that
-on one single line can exists at least one instruction.
-*/
-static void urm_parse_prg(URM *urm, const char *prg_text) {
-    size_t line = 0;
-
-    const char *p = prg_text;
-    while (*p != '\0') {
-        skip_spaces(&p);
-
-        if (*p == '\n') {
-            p++;
-            continue;
-        }
-
-        /* Get instr type */
-        URM_instr *i = urm->instructions + line;
-        switch(*p) {
-            case 'Z':
-                i->type = ZERO;
-                p++;
-                parse_uint(&p, 1, i->args);
-                break;
-            case 'S':
-                i->type = SUCC;
-                p++;
-                parse_uint(&p, 1, i->args);
-                break;
-            case 'T':
-                i->type = TRANSFER;
-                p++;
-                parse_uint(&p, 2, i->args);
-                break;
-            case 'J':
-                i->type = JMP;
-                p++;
-                parse_uint(&p, 3, i->args);
-                break;
-            default:
-                fprintf(stderr, "Syntax error: getting instr type\n");
-                exit(1);
-        }
-
-        skip_spaces(&p);
-        if (*p == '\0') break;
-        if (*p != '\n') {
-            fprintf(stderr, "Syntax error: no newline\n");
-            exit(1);
-        }
-        line++;
-        p++;
-    }
-}
-
-/*=========================================================================================*/
 
 URM *urm_init(const char *prg_text) {
     URM *urm = urm_malloc(sizeof(URM));
@@ -173,26 +74,13 @@ URM *urm_init(const char *prg_text) {
     urm->memory = urm_calloc(URM_INIT_MEMORY_CAP, sizeof(unsigned int));
     urm->memory_capacity = URM_INIT_MEMORY_CAP;
 
-    /* Getting program lines num (excluding empty lines) */
-    size_t prg_lines = 0;
-    const char *p = prg_text;
-    while (*p != '\0') {
-        skip_spaces(&p);
-
-        if (*p != '\n') {
-            while (*p != '\n' && *p != '\0') {
-                p++;
-            }
-            prg_lines++;
-        }
-
-        if (*p != '\0') p++;
-    }
+    /* Getting program instructions num */
+    size_t prg_lines = urm_get_program_instr_number(prg_text);
 
     urm->instructions_len = prg_lines;
     urm->instructions = urm_malloc(urm->instructions_len * sizeof(URM_instr));
 
-    urm_parse_prg(urm, prg_text);
+    urm_parse_prg(urm->instructions, prg_text);
     return urm;
 }
 
