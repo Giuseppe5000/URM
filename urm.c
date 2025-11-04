@@ -6,7 +6,7 @@
 
 /*==================================== Data structures ====================================*/
 
-#define URM_INIT_MEMORY_CAP 512 /* Initial allocated memory for the machine */
+#define URM_INIT_MEMORY_CAP 256 /* Initial allocated memory for the machine */
 
 enum URM_instr_type {
     ZERO,      /* [1 arg] (n) - Puts 0 into the register Rn */
@@ -32,7 +32,7 @@ struct URM {
 
 /*=========================================================================================*/
 
-/*======================================== Parsing ========================================*/
+/*========================================= Utils =========================================*/
 
 /*
 Wrapping malloc with this helper function,
@@ -48,6 +48,9 @@ static void *urm_malloc(size_t size) {
 
 }
 
+/*
+Same as urm_malloc.
+*/
 static void *urm_calloc(size_t nmemb, size_t size) {
     void *ptr = calloc(nmemb, size);
     if (ptr == NULL) {
@@ -55,6 +58,22 @@ static void *urm_calloc(size_t nmemb, size_t size) {
         exit(1);
     }
     return ptr;
+}
+
+/*
+Same as urm_malloc.
+*/
+void *urm_realloc(void *ptr, size_t size) {
+    void *p = realloc(ptr, size);
+    if (p == NULL) {
+        fprintf(stderr, "[ERROR]: Out of memory.");
+        exit(1);
+    }
+    return p;
+}
+
+static unsigned int max(unsigned int a, unsigned int b) {
+    return a > b ? a : b;
 }
 
 /*=========================================================================================*/
@@ -193,6 +212,17 @@ unsigned int urm_exec(URM *urm, unsigned int *input, size_t input_len) {
         unsigned int arg1 = current_instr->args[0];
         unsigned int arg2 = current_instr->args[1];
         unsigned int arg3 = current_instr->args[2];
+
+        /* Enlarge memory if needed */
+        unsigned int max_arg = max(arg1, arg2);
+        while (max_arg - 1 >= urm->memory_capacity) {
+            size_t old_capacity = urm->memory_capacity;
+            urm->memory_capacity *= 2;
+            urm->memory = urm_realloc(urm->memory, urm->memory_capacity*sizeof(unsigned int));
+
+            /* Setting new memory to 0, because realloc doesn't do that */
+            memset(urm->memory + old_capacity, 0, (urm->memory_capacity - old_capacity)*sizeof(unsigned int));
+        }
 
         switch (current_instr->type) {
             case ZERO:

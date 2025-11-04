@@ -18,4 +18,6 @@ int main(void) {
 
     unsigned int input[] = {1, 10};
     printf("RES = %u\n", urm_exec(urm, input, sizeof(input)/sizeof(input[0])));
+
+    urm_free(urm);
 }
