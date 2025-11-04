@@ -1,0 +1,4 @@
+1) Enlarge memory during exec if needed.
+2) Make tool called 'urm_comp' for composing two programs.
+3) Make tool called 'urm_rec' for achieve primitive recursion.
+3) Make tool called 'urm_minimize' for achieve unbounded minimalization.
